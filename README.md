@@ -78,8 +78,10 @@ Profiles:
 
 4. Then run this command to generate the configtx peer block: `configtxgen -outputCreateChannelTx /home/mars.pb -profile TwoOrgChannel -channelID mars --configPath /home/`
 
-5. Now create the channel using this command: `CORE_PEER_TLS_ENABLED=true CORE_PEER_TLS_ROOTCERT_FILE=/home/managedblockchain-tls-chain.pem CORE_PEER_ADDRESS=$PEER_URL CORE_PEER_LOCALMSPID=$MEMBER_ID CORE_PEER_MSPCONFIGPATH=/home/admin-msp peer channel create -c mars -f /home/mars.pb -o $ORDERER_URL  --cafile /home/managedblockchain-tls-chain.pem --tls`
+5. Set environment variables using this command: `export CORE_PEER_TLS_ENABLED=true CORE_PEER_TLS_ROOTCERT_FILE=/home/managedblockchain-tls-chain.pem CORE_PEER_ADDRESS=$PEER_URL CORE_PEER_LOCALMSPID=$MEMBER_ID CORE_PEER_MSPCONFIGPATH=/home/admin-msp`
 
-6. Join IdentityAuthority to the channel by running this command: `CORE_PEER_TLS_ENABLED=true CORE_PEER_TLS_ROOTCERT_FILE=/home/managedblockchain-tls-chain.pem CORE_PEER_ADDRESS=$PEER_URL CORE_PEER_LOCALMSPID=$MEMBER_ID CORE_PEER_MSPCONFIGPATH=/home/admin-msp peer channel join -b /home/mars.block -o $ORDERER_URL --cafile /home/managedblockchain-tls-chain.pem --tls`
+6. Now create the channel using this command: `peer channel create -c mars -f /home/mars.pb -o $ORDERER_URL  --cafile /home/managedblockchain-tls-chain.pem --tls`
 
-7. Join PropertyAuthority to the channel by running this command: `CORE_PEER_TLS_ENABLED=true CORE_PEER_TLS_ROOTCERT_FILE=/home/managedblockchain-tls-chain.pem CORE_PEER_ADDRESS=$PEER_URL CORE_PEER_LOCALMSPID=$MEMBER_ID CORE_PEER_MSPCONFIGPATH=/home/admin-msp peer channel fetch 0 mars.block --tls -c mars -o $ORDERER_URL --cafile /home/managedblockchain-tls-chain.pem` and `CORE_PEER_TLS_ENABLED=true CORE_PEER_TLS_ROOTCERT_FILE=/home/managedblockchain-tls-chain.pem CORE_PEER_ADDRESS=$PEER_URL CORE_PEER_LOCALMSPID=$MEMBER_ID CORE_PEER_MSPCONFIGPATH=/home/admin-msp peer channel join -b /home/mars.block -o $ORDERER_URL --cafile /home/managedblockchain-tls-chain.pem --tls`
+7. Join IdentityAuthority to the channel by running this command: `peer channel join -b /home/mars.block -o $ORDERER_URL --cafile /home/managedblockchain-tls-chain.pem --tls`
+
+8. Join PropertyAuthority to the channel by running this command: `peer channel fetch 0 mars.block --tls -c mars -o $ORDERER_URL --cafile /home/managedblockchain-tls-chain.pem` and `peer channel join -b /home/mars.block -o $ORDERER_URL --cafile /home/managedblockchain-tls-chain.pem --tls`
