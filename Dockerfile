@@ -9,9 +9,13 @@ RUN curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | sudo apt-key add - && ec
 
 WORKDIR /home
 
+ENV GOPATH /opt/gopath
+ENV CORE_LOGGING_LEVEL info
+ENV CORE_PEER_ID cli
+
 COPY package.json yarn.lock ./
-COPY ./src ./src
 RUN yarn install
+COPY ./src ./src
 
 CMD ["yarn", "start"]
 
