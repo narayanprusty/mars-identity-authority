@@ -2,86 +2,72 @@
 
 This is the REST APIs server for Identity Authority.
 
+## ENVs
+
+The following ENVs are required while starting the container:
+
+1. `AWS_KEY`: IAM access key
+2. `AWS_SECRET_KEY`: IAM secret key
+3. `AWS_REGION`: Region where managed blockchain member is deployed
+4. `CA_USERNAME`: CA username
+5. `CA_PASSWORD`: CA password
+6. `NETWORK_ID`: Managed blockchain member ID
+7. `ORDERER_URL`: Orderer URL of the network
+8. `CORE_PEER_ADDRESS`: Peer URL of the member
+9. `CORE_PEER_TLS_ENABLED`: true
+10. `CORE_PEER_TLS_ROOTCERT_FILE`: /home/managedblockchain-tls-chain.pem
+11. `CORE_PEER_LOCALMSPID`: Managed blockchain member ID
+12. `CORE_PEER_MSPCONFIGPATH`: /home/admin-msp
+
 ## Creating a Joint Channel
 
-First ssh into the EC2 that's running the containers. Then access to shell of the containers using this command: `docker exec -i -t container_id /bin/bash`. Then create a channel with both authorities as members follow the below steps:
+First ssh into the EC2 that's running the containers. Then gain access to shell of the containers using this command: `docker exec -i -t container_id /bin/bash`. Then create "identity" channel with all three authorities as members.
 
-1. Run this command in working directory inside the docker container to create MSP directory representing property authority: `mkdir property-authority-msp && mkdir property-authority-msp/admincerts && mkdir property-authority-msp/cacerts` 
+1. Run this command in working directory inside the docker container of identity authority to create MSP directory representing property authority: `mkdir property-authority-msp && mkdir property-authority-msp/admincerts && mkdir property-authority-msp/cacerts` 
+2. Similarly create MSP directory for voting authority: `mkdir voting-authority-msp && mkdir voting-authority-msp/admincerts && mkdir voting-authority-msp/cacerts`
+3. The copy the files from "admincerts" and "cacerts" directory of property authority and voting-authority containers
+4. Replace content of configtx.yaml with this:
 
-2. The copy the files from admincerts and cacerts directory of property authority container
-
-3. Replace content of configtx.yaml with this:
-
-```
-################################################################################
-#
-#   Section: Organizations
-#
-#   - This section defines the different organizational identities which will
-#   be referenced later in the configuration.
-#
-################################################################################
+```yaml
 Organizations:
     - &Org1
-            # member id defines the organization
-        Name: m-LROTSFCSWBFRHPNTC7MWV6V7VQ
-            # ID to load the MSP definition as
-        ID: m-LROTSFCSWBFRHPNTC7MWV6V7VQ
-            #msp dir of org1 in the docker container
+        Name: member-id
+        ID: member-id
         MSPDir: /home/admin-msp
-            # AnchorPeers defines the location of peers which can be used
-            # for cross org gossip communication.  Note, this value is only
-            # encoded in the genesis block in the Application section context
         AnchorPeers:
             - Host:
               Port:
     - &Org2
-        Name: m-L74IXPZKH5GE7AS55RKH2WYIRE
-        ID: m-L74IXPZKH5GE7AS55RKH2WYIRE
+        Name: member-id
+        ID: member-id
         MSPDir: /home/property-authority-msp
         AnchorPeers:
             - Host:
               Port:
-
-################################################################################
-#
-#   SECTION: Application
-#
-#   - This section defines the values to encode into a config transaction or
-#   genesis block for application related parameters
-#
-################################################################################
+    - &Org3
+        Name: member-id
+        ID: member-id
+        MSPDir: /home/voting-authority-msp
+        AnchorPeers:
+            - Host:
+              Port:
 Application: &ApplicationDefaults
-        # Organizations is the list of orgs which are defined as participants on
-        # the application side of the network
      Organizations:
-
-################################################################################
-#
-#   Profile
-#
-#   - Different configuration profiles may be encoded here to be specified
-#   as parameters to the configtxgen tool
-#
-################################################################################
 Profiles:
-    TwoOrgChannel:
+    ThreeOrgChannel:
         Consortium: AWSSystemConsortium
         Application:
             <<: *ApplicationDefaults
             Organizations:
                 - *Org1
                 - *Org2
+                - *Org3
 ```
 
 > Add Member ID of the orgs for values Name and ID
 
-4. Then run this command to generate the configtx peer block: `configtxgen -outputCreateChannelTx /home/mars.pb -profile TwoOrgChannel -channelID mars --configPath /home/`
-
-5. Set environment variables using this command: `export CORE_PEER_TLS_ENABLED=true CORE_PEER_TLS_ROOTCERT_FILE=/home/managedblockchain-tls-chain.pem CORE_PEER_ADDRESS=$PEER_URL CORE_PEER_LOCALMSPID=$MEMBER_ID CORE_PEER_MSPCONFIGPATH=/home/admin-msp`
-
-6. Now create the channel using this command: `peer channel create -c mars -f /home/mars.pb -o $ORDERER_URL  --cafile /home/managedblockchain-tls-chain.pem --tls`
-
-7. Join IdentityAuthority to the channel by running this command: `peer channel join -b /home/mars.block -o $ORDERER_URL --cafile /home/managedblockchain-tls-chain.pem --tls`
-
-8. Join PropertyAuthority to the channel by running this command: `peer channel fetch 0 mars.block --tls -c mars -o $ORDERER_URL --cafile /home/managedblockchain-tls-chain.pem` and `peer channel join -b /home/mars.block -o $ORDERER_URL --cafile /home/managedblockchain-tls-chain.pem --tls`
+4. Then run this command to generate the configtx peer block: `configtxgen -outputCreateChannelTx /home/identity.pb -profile ThreeOrgChannel -channelID identity --configPath /home/`
+5. Now create the channel using this command: `peer channel create -c identity -f /home/identity.pb -o $ORDERER_URL  --cafile /home/managedblockchain-tls-chain.pem --tls`
+6. Join IdentityAuthority to the channel by running this command: `peer channel join -b /home/identity.block -o $ORDERER_URL --cafile /home/managedblockchain-tls-chain.pem --tls`
+7. Join property authority peer to the channel by running this command inside the property authority's docker container: `peer channel fetch 0 identity.block --tls -c identity -o $ORDERER_URL --cafile /home/managedblockchain-tls-chain.pem` and `peer channel join -b /home/identity.block -o $ORDERER_URL --cafile /home/managedblockchain-tls-chain.pem —tls`. Note that for these commands to work set the environment variables like step 5 inside this container.
+8. Join voting authority peer to the channel by running this command inside the voting authority's docker container: `peer channel fetch 0 identity.block --tls -c identity -o $ORDERER_URL --cafile /home/managedblockchain-tls-chain.pem` and `peer channel join -b /home/identity.block -o $ORDERER_URL --cafile /home/managedblockchain-tls-chain.pem —tls`. Note that for these commands to work set the environment variables like step 5 inside this container.
