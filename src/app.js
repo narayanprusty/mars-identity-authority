@@ -31,6 +31,8 @@ dynamo.AWS.config.update({region: region});
 app.use(bodyParser.json())
 app.use(cors())
 
+shortid.characters('0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ$@');
+
 async function runCommand(cmd) {
   return new Promise((resolve, reject) => {
     shell.exec(cmd, {silent: true}, function(code, stdout, stderr) {
@@ -239,19 +241,6 @@ app.post('/createUser', async (req, res) => {
     await runCommand(`peer chaincode invoke -n identity -c '{"Args":["issueIdentity", "${id}", "${publicKey}", "${metadataHash}"]}' -C identity -o $ORDERER_URL --cafile /home/crypto/managedblockchain-tls-chain.pem --tls`)
 
     res.send({message: {privateKey, id}})
-  } catch(e) {
-    res.send({message: e, error: true})
-  }
-})
-
-app.post('/addServiceProvider', async (req, res) => {
-  let mspid = req.body.mspid
-  let name = req.body.name
-  let publicKey = req.body.publicKey
-
-  try {
-    await runCommand(`peer chaincode invoke -n identity -c '{"Args":["addServiceProvider", "${mspid}", "${name}", "${publicKey}"]}' -C identity -o $ORDERER_URL --cafile /home/crypto/managedblockchain-tls-chain.pem --tls`)
-    res.send({message: "Added"})
   } catch(e) {
     res.send({message: e, error: true})
   }
